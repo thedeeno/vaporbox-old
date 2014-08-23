@@ -16,8 +16,5 @@ module Vaporbox
       data = request "set_email_user", "&email_user=#{new_email}&lang=en"
       @email = data["email_addr"]
     end
-    def send_email target, subject, body
-      @agent.post "#{@url_base}f=send_mail", {from:@email,to:target,subject:subject,body:body}
-    end
   end
 end

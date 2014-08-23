@@ -4,6 +4,26 @@ require 'vaporbox'
 module Vaporbox
 
   describe Mailbox do
+
+    describe ".find_or_create" do
+      it "returns the mailbox with username" do
+        m = Mailbox.find_or_create("test")
+        expect(m.username).to eq("test")
+      end
+      it "accepts supported domains" do
+        m = Mailbox.find_or_create("test@guerrillamail.com")
+        expect(m.address).to eq("test@guerrillamail.com")
+      end
+    end
+
+    describe ".create" do
+      it "returns mailbox with random username" do
+        m = Mailbox.create
+        expect(m.address).to_not be_nil
+        expect(m.address).to_not be_empyt
+      end
+    end
+
     describe "construction" do
       it "new mailboxes should have no messages" do
         expect(Mailbox.new).to be_empty

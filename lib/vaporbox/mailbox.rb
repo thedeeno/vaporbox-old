@@ -1,3 +1,5 @@
+require 'forwardable'
+
 module Vaporbox
 
   # Provides simple access to a temporary mailbox
@@ -7,26 +9,46 @@ module Vaporbox
 
     # returns a mailbox for a specific address
     def self.find_or_create(address)
-
+      new(address)
     end
 
     # returns a mailbox for a random address
     def self.create
-
+      new
     end
+
+    attr_reader :address
+    attr_reader :session
 
     # @params address
     #   The address for the temporary mailbox
-    def initialize(subscription)
-      @subscription = subscription
+    def initialize(address=nil)
+      @address = address
+      @session = Session.start(address)
+    end
+
+    def subscription
+      session.subscription
     end
 
     def username
-      client.address.split("@")[0]
+      subscription.username
     end
 
     def address
-      client.address
+      subscription.address
+    end
+
+    def domain
+      subscription.domain
+    end
+
+    def created_at
+      subscription.created_at
+    end
+
+    def alias
+      subscription.alias
     end
 
     def empty?
@@ -34,12 +56,7 @@ module Vaporbox
     end
 
     def messages
-      @session.refresh
-    end
-
-    # lazy start the client for random email address if not set
-    def client
-      @client ||= Client.start
+      session.refresh
     end
 
     def messages

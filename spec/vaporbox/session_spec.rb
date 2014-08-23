@@ -1,6 +1,12 @@
 module Vaporbox
 
   describe Session do
+    describe "#start" do
+      it "returns session" do
+        Session.start("test")
+      end
+    end
+
     describe "#get" do
       it "captures the session id" do
         s = Session.new

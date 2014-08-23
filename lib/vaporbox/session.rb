@@ -10,52 +10,80 @@ module Vaporbox
   # Mail states that they might change the session_id on the fly. When
   # this happens the session must bust any cached state it's
   # maintaining
+  #
+  # Wraps Guerrilla Mail API documented here:
+  # https://docs.google.com/document/d/1Qw5KQP1j57BPTDmms5nspe-QAjNEsNg8cQHpAAycYNM/edit?hl=en
+  # NOTE: The api documented on guerillamail.com is out-of-date
   class Session
-    attr_reader :address, :subscriber_id
+    attr_accessor :session_id
+    attr_accessor :client
 
-    def initialize(subscriber_id)
-      @ip = "127.0.0.1"
-      @agent = "vaporbox-gem"
-      @subscriber_id = subscriber_id
-      res = get!("get_email_address", { subscr: subscriber_id })
-      Json.parse(res.body)
-
-      @address = json["email_addr"]
-      @subcription_active = json["email_addr"]
-      @date = json["email_addr"]
-      @address = json["email_addr"]
+    def self.start(address=nil)
+      client = Client.new
+      res = client.get("get_email_address")
+      sid = JSON.parse(res.body)["sid_token"]
+      session = self.new(client, sid)
+      if address
+        address = Address.new(address)
+        session.set_email_user(address.username)
+      end
+      session
     end
 
-    def get!(function, params)
-      Client.send(function, params, session_id)
-        f: function,
-        agent: @agent,
-        ip: @ip
-      })
-
-      # check for successful response
-      raise RequestError.new(res) if res.code != "200"
+    def initialize(client, sid)
+      @session_id = sid
+      @client = client
     end
 
-    # returns the value of the subscriber_id cookie
-    def subscriber_id
-      cookie = @cookies.find{|x| x.start_with? "SUBSCR"}
-      cookie.split("=")[1] if cookie
+    def subscription
+      @subscription ||= Subscription.new(get("get_email_address"))
     end
 
-    # returns the value of the session_id cookie
-    def session_id
-      cookie = @cookies.find{|x| x.start_with? "PHPSESSID"}
-      cookie.split("=")[1] if cookie
+    def set_email_user(email_user)
+      @subscription = Subscription.new get("set_email_user", email_user: email_user)
     end
 
-
-    def client
-      @client ||= Client.new
+    def defaults
+      { sid_token: @session_id }
     end
 
-    def check_mail
-      client.get("check_mail")
+    def check_mail(sequence_id=nil)
+      get "check_mail", seq: sequence_id
+    end
+
+    def get_email_list(offset=0, seq=nil)
+      get "get_email_list", offset: offset, seq: sequence_id
+    end
+
+    def fetch_email(email_id)
+      get "fetch_email", email_id: email_id
+    end
+
+    def del_email(email_ids)
+      get "del_email", email_id: email_id
+    end
+
+    def extend
+      get "extend", defaults
+    end
+
+    def send_email target, subject, body
+      post "send_mail", from:subscription.address,to:target,subject:subject,body:body
+    end
+
+    private
+
+    # returns hash of data returned from endpoint
+    def get(function, params)
+      params = defaults.merge(params)
+      res = client.get(function, params)
+      JSON.parse(res.body)
+    end
+
+    def post(function, params)
+      params = defaults.merge(params)
+      res = client.post(function, params)
+      JSON.parse(res.body)
     end
   end
 end
